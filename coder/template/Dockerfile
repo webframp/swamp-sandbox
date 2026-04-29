@@ -12,5 +12,9 @@ RUN npm install -g @anthropic-ai/claude-code@2.1.121
 
 # Non-root user for workspace
 RUN adduser --disabled-password --gecos "" --shell /bin/bash coder
+
+# Seed example models into the workspace
+COPY --chown=coder:coder models/ /home/coder/models/
+
 USER coder
 WORKDIR /home/coder

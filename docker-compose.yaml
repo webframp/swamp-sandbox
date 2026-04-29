@@ -1,6 +1,8 @@
 services:
   coder:
     image: ghcr.io/coder/coder:latest
+    group_add:
+      - "0"
     ports:
       - "3000:3000"
     volumes:

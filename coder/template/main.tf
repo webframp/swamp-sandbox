@@ -38,6 +38,9 @@ resource "coder_agent" "main" {
 
   startup_script = <<-EOT
     set -e
+    if [ ! -f "$HOME/.swamp.yaml" ]; then
+      swamp init --tool claude
+    fi
     swamp --version
     claude --version
   EOT
