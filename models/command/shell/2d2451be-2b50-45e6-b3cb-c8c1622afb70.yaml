@@ -1,0 +1,44 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: 2d2451be-2b50-45e6-b3cb-c8c1622afb70
+name: sandbox-inspect
+version: 1
+tags:
+  example: "01-sandbox-inspect"
+globalArguments: {}
+methods:
+  execute:
+    arguments:
+      run: |
+        echo "=== Sandbox Environment Inspection ==="
+        echo ""
+        echo "--- Host Identity ---"
+        echo "Hostname: $(hostname)"
+        echo "User: $(whoami)"
+        echo "ID: $(id)"
+        echo ""
+        echo "--- Operating System ---"
+        cat /etc/os-release 2>/dev/null || echo "Unknown OS"
+        echo ""
+        echo "--- Available Tools ---"
+        for cmd in swamp claude git curl jq node npm bash; do
+          if command -v "$cmd" >/dev/null 2>&1; then
+            echo "$cmd: $(command -v "$cmd")"
+          else
+            echo "$cmd: NOT FOUND"
+          fi
+        done
+        echo ""
+        echo "--- Network Interfaces ---"
+        ip addr 2>/dev/null || ifconfig 2>/dev/null || echo "No network tools available"
+        echo ""
+        echo "--- Filesystem ---"
+        df -h 2>/dev/null || echo "df not available"
+        echo ""
+        echo "--- Mount Points ---"
+        mount | head -20
+        echo ""
+        echo "--- Environment ---"
+        echo "HOME: $HOME"
+        echo "PWD: $PWD"
+        echo "PATH: $PATH"
