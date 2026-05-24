@@ -1,0 +1,17 @@
+name: sandbox-coder-template
+type: sandbox/coder-template
+version: "2026.05.24.1"
+description: >
+  Manages Coder workspace templates. Provides push, describe, and versions
+  methods that interact with the Coder API to manage template lifecycle and
+  produce typed state about template configuration and build history.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - sandbox
+  - coder
+  - template
