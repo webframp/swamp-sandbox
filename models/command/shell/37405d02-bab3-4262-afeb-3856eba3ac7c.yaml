@@ -1,0 +1,21 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: 37405d02-bab3-4262-afeb-3856eba3ac7c
+name: sandbox-network
+version: 1
+tags:
+  example: "04-workflow-dag"
+globalArguments: {}
+methods:
+  execute:
+    arguments:
+      run: |
+        echo "{"
+        echo "  \"observedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+        echo "  \"interfaces\": [$(ip -j addr 2>/dev/null | jq -c '.[] | {name: .ifname, state: .operstate, addresses: [.addr_info[] | .local]}' 2>/dev/null | tr '\n' ',' | sed 's/,$//')],"
+        echo "  \"listeningPorts\": [$(ss -tlnp 2>/dev/null | tail -n +2 | awk '{split($4,a,":"); print "{\"port\":" a[length(a)] ",\"addr\":\"" $4 "\"}"}' | tr '\n' ',' | sed 's/,$//')],"
+        echo "  \"dns\": [$(cat /etc/resolv.conf 2>/dev/null | grep nameserver | awk '{print "\"" $2 "\""}' | tr '\n' ',' | sed 's/,$//')],"
+        echo "  \"connectivity\": {"
+        echo "    \"canResolve\": $(nslookup swamp.club 2>/dev/null | grep -q 'Address' && echo true || echo false)"
+        echo "  }"
+        echo "}"
