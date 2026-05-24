@@ -7,6 +7,13 @@
 .swamp-sources.yaml
 
 # Claude Code configuration (managed by swamp)
-.claude/
+.claude/worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
 # END swamp managed section
+
+# Repo-local Coder CLI binary (installed from server)
+.local/
+
 docs/

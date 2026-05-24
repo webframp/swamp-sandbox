@@ -1,18 +1,38 @@
 # swamp-sandbox
 
-A practical demo of sandboxing [swamp](https://swamp.club) execution inside
-[Coder](https://coder.com) workspaces using Docker Compose.
+A hands-on learning environment for [swamp](https://swamp.club) — an AI-native
+automation tool that uses typed models, versioned data, and agentic workflows
+to observe and manage infrastructure.
 
-Claude Code + swamp run inside isolated containers managed by Coder, keeping
-agent execution separate from your host environment. This repo demonstrates
-the pattern and provides examples you can build on.
+This repo runs swamp + Claude Code inside isolated [Coder](https://coder.com)
+workspace containers via Docker Compose. You get a safe, disposable sandbox
+to experiment with swamp models, methods, data queries, and workflows without
+touching your host machine or any production systems.
+
+## What you'll learn
+
+- **Models and methods** — swamp's core primitive: typed schemas with executable
+  methods (validate, transform, enrich) that produce versioned, queryable output
+- **Data queries with CEL** — query model output across versions using Common
+  Expression Language
+- **Workflows** — orchestrate multiple models into DAGs with parallel jobs and
+  typed dependencies
+- **Extensions** — build custom model types in TypeScript when built-in types
+  don't cover your domain
+
+Each concept builds on the last. Start with the examples, then explore freely
+inside the sandbox.
 
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose (or Podman)
-- [Coder CLI](https://coder.com/docs/install)
-- An [Anthropic API key](https://console.anthropic.com/)
-- Make
+- Make, curl, jq
+- Claude Code credentials (one of the following):
+  - `ANTHROPIC_API_KEY` — direct [Anthropic API](https://console.anthropic.com/) access
+  - `CLAUDE_CODE_USE_BEDROCK` + `AWS_BEARER_TOKEN_BEDROCK` — [AWS Bedrock](https://docs.aws.amazon.com/bedrock/) access
+
+The Coder CLI is installed automatically from the running server (no external
+install needed).
 
 Works on Linux (x86_64 and ARM), macOS (Apple Silicon and Intel), and WSL2.
 
@@ -23,12 +43,40 @@ Three commands to go from clone to running sandbox:
 ```bash
 make up                # Start the Coder server
 make login             # Create admin user and authenticate CLI (fully automatic)
-make setup             # Push template and create workspace (prompts for API key)
+make setup             # Push template and create workspace
 ```
 
-`make login` creates a default admin account and authenticates the CLI
-without any browser interaction. `make setup` prompts for your Anthropic API
-key, then builds the workspace image and creates the sandbox.
+`make login` creates a default admin account, installs a repo-local Coder CLI
+matching the server version, and authenticates — no browser interaction needed.
+
+`make setup` needs credentials so Claude Code can authenticate inside the
+workspace container. It looks for them in two places (in this order):
+
+1. **Shell environment** — checks for exported env vars
+2. **`~/.claude/settings.json`** — reads the `env` object if vars aren't in the shell
+
+The credentials it looks for (one set required):
+
+| Provider | Variables |
+|----------|-----------|
+| Anthropic API | `ANTHROPIC_API_KEY` |
+| AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK` + `AWS_BEARER_TOKEN_BEDROCK` |
+
+These values are passed as Coder workspace parameters and injected as
+environment variables inside the container. They are **not** logged, committed,
+or sent anywhere other than the locally-running Coder server. The container
+is ephemeral — credentials exist only for the lifetime of the workspace.
+
+Export your credentials before running, or ensure they're in your settings file:
+
+```bash
+# Option A: Anthropic API
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Option B: AWS Bedrock
+export CLAUDE_CODE_USE_BEDROCK=1
+export AWS_BEARER_TOKEN_BEDROCK=...
+```
 
 Once the workspace is running, dispatch work via Coder tasks:
 
@@ -83,6 +131,24 @@ README explaining what it demonstrates and how to run it.
 | Example | Description |
 |---------|-------------|
 | [01-sandbox-inspect](examples/01-sandbox-inspect/) | Inspect the sandbox environment to verify isolation |
+
+## Exploring interactively
+
+After `make ssh`, you're inside a fully equipped sandbox. Try these to get
+oriented:
+
+```bash
+swamp --help                              # See all commands
+swamp model search                        # List models in this workspace
+swamp model type search                   # Browse available model types
+swamp model method run sandbox-inspect execute  # Run the example model
+swamp model output get sandbox-inspect    # View the output data
+```
+
+Claude Code is also available inside the workspace. Start it with `claude` and
+ask it to help you create models, run workflows, or explore swamp's capabilities.
+The swamp skills are pre-installed, so Claude knows how to work with swamp out
+of the box.
 
 ## Step-by-step guide
 
@@ -142,8 +208,17 @@ pre-installed) and registers the template. The first push takes a couple of
 minutes while Terraform downloads providers and Docker builds the image.
 
 ```bash
+# For Anthropic API:
 coder create my-sandbox --template sandbox \
+  --parameter claude_provider=anthropic \
   --parameter anthropic_api_key=YOUR_API_KEY_HERE \
+  --yes
+
+# For AWS Bedrock:
+coder create my-sandbox --template sandbox \
+  --parameter claude_provider=bedrock \
+  --parameter aws_bearer_token_bedrock=YOUR_TOKEN \
+  --parameter claude_code_use_bedrock=1 \
   --yes
 ```
 

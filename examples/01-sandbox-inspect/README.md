@@ -20,21 +20,21 @@ container, not on your host machine.
 
 Make sure you have a Coder workspace running (see the root README for setup).
 
-From your host machine, create a Coder task that runs the inspection:
+From your host machine, dispatch a Coder task that runs the inspection:
 
 ```bash
-coder tasks create my-sandbox \
-  --command "cd /home/coder && swamp model method run sandbox-inspect inspect"
+make task-inspect
 ```
 
-Or open a terminal in the Coder workspace and run it directly:
+Or SSH into the workspace and run it directly:
 
 ```bash
-swamp model method run sandbox-inspect inspect
+make ssh
+swamp model method run sandbox-inspect execute
 ```
 
 ## Expected output
 
 You should see container-specific values: a short hostname (not your machine's
-name), the `coder` user, Alpine Linux paths, and container network interfaces.
+name), the `coder` user, Debian paths, and container network interfaces.
 This confirms swamp execution is sandboxed.
