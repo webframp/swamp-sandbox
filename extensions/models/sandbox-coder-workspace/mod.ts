@@ -9,6 +9,11 @@ const GlobalArgsSchema = z.object({
   url: z.string().url().default("http://localhost:3000"),
   templateName: z.string().default("sandbox"),
   workspaceName: z.string().default("my-sandbox"),
+  claudeProvider: z.string().default("bedrock"),
+  anthropicApiKey: z.string().default(""),
+  awsBearerTokenBedrock: z.string().default(""),
+  claudeCodeUseBedrock: z.string().default(""),
+  awsRegion: z.string().default("us-east-1"),
 });
 
 const WorkspaceStateSchema = z.object({
@@ -106,25 +111,19 @@ export const model = {
   methods: {
     create: {
       description:
-        "Create a new workspace from the configured template with Claude Code credentials",
-      arguments: z.object({
-        provider: z
-          .enum(["anthropic", "bedrock"])
-          .default("bedrock"),
-        anthropicApiKey: z.string().optional(),
-        awsBearerTokenBedrock: z.string().optional(),
-        claudeCodeUseBedrock: z.string().optional(),
-        awsRegion: z.string().default("us-east-1"),
-      }),
-      execute: async (args: Record<string, unknown>, context: any) => {
-        const { url, templateName, workspaceName } = context.globalArgs;
-        const typedArgs = args as {
-          provider: string;
-          anthropicApiKey?: string;
-          awsBearerTokenBedrock?: string;
-          claudeCodeUseBedrock?: string;
-          awsRegion: string;
-        };
+        "Create a new workspace from the configured template with Claude Code credentials from vault",
+      arguments: z.object({}),
+      execute: async (_args: Record<string, unknown>, context: any) => {
+        const {
+          url,
+          templateName,
+          workspaceName,
+          claudeProvider,
+          anthropicApiKey,
+          awsBearerTokenBedrock,
+          claudeCodeUseBedrock,
+          awsRegion,
+        } = context.globalArgs;
 
         context.logger.info("Creating workspace {name} from template {template}", {
           name: workspaceName,
@@ -140,15 +139,15 @@ export const model = {
           "--parameter",
           "AI Prompt=",
           "--parameter",
-          `claude_provider=${typedArgs.provider}`,
+          `claude_provider=${claudeProvider}`,
           "--parameter",
-          `anthropic_api_key=${typedArgs.anthropicApiKey || ""}`,
+          `anthropic_api_key=${anthropicApiKey}`,
           "--parameter",
-          `aws_bearer_token_bedrock=${typedArgs.awsBearerTokenBedrock || ""}`,
+          `aws_bearer_token_bedrock=${awsBearerTokenBedrock}`,
           "--parameter",
-          `claude_code_use_bedrock=${typedArgs.claudeCodeUseBedrock || ""}`,
+          `claude_code_use_bedrock=${claudeCodeUseBedrock}`,
           "--parameter",
-          `aws_region=${typedArgs.awsRegion}`,
+          `aws_region=${awsRegion}`,
           "--yes",
         ];
 

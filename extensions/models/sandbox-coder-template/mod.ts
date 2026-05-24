@@ -9,6 +9,11 @@ const GlobalArgsSchema = z.object({
   url: z.string().url().default("http://localhost:3000"),
   templateName: z.string().default("sandbox"),
   templateDir: z.string().default("./coder/template"),
+  claudeProvider: z.string().default("bedrock"),
+  anthropicApiKey: z.string().default(""),
+  awsBearerTokenBedrock: z.string().default(""),
+  claudeCodeUseBedrock: z.string().default(""),
+  awsRegion: z.string().default("us-east-1"),
 });
 
 const TemplateStateSchema = z.object({
@@ -104,17 +109,19 @@ export const model = {
   methods: {
     push: {
       description:
-        "Push a new template version to the Coder server. Uses the Coder CLI for the Terraform packaging step.",
-      arguments: z.object({
-        variables: z
-          .record(z.string(), z.string())
-          .optional()
-          .describe("Template variables as key=value pairs"),
-      }),
-      execute: async (args: Record<string, unknown>, context: any) => {
-        const { url, templateName, templateDir } = context.globalArgs;
-        const variables = (args as { variables?: Record<string, string> })
-          .variables;
+        "Push a new template version to the Coder server with Claude Code credentials from vault. Uses the Coder CLI for the Terraform packaging step.",
+      arguments: z.object({}),
+      execute: async (_args: Record<string, unknown>, context: any) => {
+        const {
+          url,
+          templateName,
+          templateDir,
+          claudeProvider,
+          anthropicApiKey,
+          awsBearerTokenBedrock,
+          claudeCodeUseBedrock,
+          awsRegion,
+        } = context.globalArgs;
 
         context.logger.info("Pushing template {name} from {dir}", {
           name: templateName,
@@ -128,15 +135,13 @@ export const model = {
           "--directory",
           templateDir,
           "--yes",
+          "--variable", `preset_claude_provider=${claudeProvider}`,
+          "--variable", `preset_anthropic_api_key=${anthropicApiKey}`,
+          "--variable", `preset_aws_bearer_token_bedrock=${awsBearerTokenBedrock}`,
+          "--variable", `preset_claude_code_use_bedrock=${claudeCodeUseBedrock}`,
+          "--variable", `preset_aws_region=${awsRegion}`,
         ];
 
-        if (variables) {
-          for (const [key, value] of Object.entries(variables)) {
-            cliArgs.push("--variable", `${key}=${value}`);
-          }
-        }
-
-        // Find the coder CLI (repo-local or PATH)
         const coderBin = await findCoderBin();
         const result = await runCommand(coderBin, cliArgs);
 

@@ -15,7 +15,7 @@ CONTAINER_SOCKET ?= $(shell \
 	elif [ -S /run/user/$$(id -u)/podman/podman.sock ]; then echo /run/user/$$(id -u)/podman/podman.sock; \
 	else echo /var/run/docker.sock; fi)
 
-.PHONY: help bootstrap destroy up down reset login setup ssh task task-inspect tasks clean status coder-cli models
+.PHONY: help bootstrap destroy up down reset login setup ssh task task-inspect tasks clean status coder-cli vault models
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -27,15 +27,69 @@ $(CODER):
 
 coder-cli: $(CODER) ## Install repo-local Coder CLI matching the server version
 
-# --- Swamp model instances (idempotent, created once) ---
+# --- Vault and model instances (idempotent, created once) ---
 
-models: ## Ensure swamp model instances exist for infrastructure management
+vault: ## Ensure the sandbox-creds vault exists and has credentials stored
+	@swamp vault search --json 2>/dev/null | jq -e '.results[] | select(.name == "sandbox-creds")' > /dev/null 2>&1 \
+		|| (echo "Creating sandbox-creds vault..." && swamp vault create local_encryption sandbox-creds --json > /dev/null)
+	@BEDROCK_TOKEN="$${AWS_BEARER_TOKEN_BEDROCK:-}"; \
+	BEDROCK_MODE="$${CLAUDE_CODE_USE_BEDROCK:-}"; \
+	API_KEY="$${ANTHROPIC_API_KEY:-}"; \
+	AWS_REGION="$${AWS_REGION:-}"; \
+	if [ -z "$$BEDROCK_TOKEN" ] || [ -z "$$BEDROCK_MODE" ] || [ -z "$$API_KEY" ]; then \
+		SETTINGS="$${HOME}/.claude/settings.json"; \
+		if [ -f "$$SETTINGS" ]; then \
+			[ -z "$$BEDROCK_TOKEN" ] && BEDROCK_TOKEN=$$(jq -r '.env.AWS_BEARER_TOKEN_BEDROCK // empty' "$$SETTINGS"); \
+			[ -z "$$BEDROCK_MODE" ] && BEDROCK_MODE=$$(jq -r '.env.CLAUDE_CODE_USE_BEDROCK // empty' "$$SETTINGS"); \
+			[ -z "$$API_KEY" ] && API_KEY=$$(jq -r '.env.ANTHROPIC_API_KEY // empty' "$$SETTINGS"); \
+			[ -z "$$AWS_REGION" ] && AWS_REGION=$$(jq -r '.env.AWS_REGION // empty' "$$SETTINGS"); \
+		fi; \
+	fi; \
+	if [ -z "$$BEDROCK_MODE" ] || [ -z "$$BEDROCK_TOKEN" ]; then \
+		if [ -z "$$API_KEY" ]; then \
+			echo "No Claude Code credentials detected."; \
+			echo ""; \
+			echo "Set one of (in environment or ~/.claude/settings.json):"; \
+			echo "  ANTHROPIC_API_KEY              — for direct Anthropic API access"; \
+			echo "  CLAUDE_CODE_USE_BEDROCK +"; \
+			echo "  AWS_BEARER_TOKEN_BEDROCK       — for AWS Bedrock access"; \
+			echo ""; \
+			echo "Then re-run: make vault"; \
+			exit 1; \
+		fi; \
+	fi; \
+	PROVIDER="anthropic"; \
+	if [ -n "$$BEDROCK_MODE" ] && [ -n "$$BEDROCK_TOKEN" ]; then \
+		PROVIDER="bedrock"; \
+	fi; \
+	echo "$$PROVIDER" | swamp vault put sandbox-creds CLAUDE_PROVIDER > /dev/null 2>&1; \
+	echo "$${API_KEY:-}" | swamp vault put sandbox-creds ANTHROPIC_API_KEY > /dev/null 2>&1; \
+	echo "$${BEDROCK_TOKEN:-}" | swamp vault put sandbox-creds AWS_BEARER_TOKEN_BEDROCK > /dev/null 2>&1; \
+	echo "$${BEDROCK_MODE:-}" | swamp vault put sandbox-creds CLAUDE_CODE_USE_BEDROCK > /dev/null 2>&1; \
+	echo "$${AWS_REGION:-us-east-1}" | swamp vault put sandbox-creds AWS_REGION > /dev/null 2>&1; \
+	echo "Credentials stored in vault (provider: $$PROVIDER)."
+
+models: vault ## Ensure swamp model instances exist for infrastructure management
 	@swamp model search --json 2>/dev/null | jq -e '.results[] | select(.name == "coder-server")' > /dev/null 2>&1 \
 		|| (echo "Creating coder-server model..." && swamp model create sandbox/coder-server coder-server --json > /dev/null)
 	@swamp model search --json 2>/dev/null | jq -e '.results[] | select(.name == "coder-template")' > /dev/null 2>&1 \
-		|| (echo "Creating coder-template model..." && swamp model create sandbox/coder-template coder-template --json > /dev/null)
+		|| (echo "Creating coder-template model..." \
+		&& swamp model create sandbox/coder-template coder-template \
+			--global-arg 'claudeProvider=$${{ vault.get(sandbox-creds, CLAUDE_PROVIDER) }}' \
+			--global-arg 'anthropicApiKey=$${{ vault.get(sandbox-creds, ANTHROPIC_API_KEY) }}' \
+			--global-arg 'awsBearerTokenBedrock=$${{ vault.get(sandbox-creds, AWS_BEARER_TOKEN_BEDROCK) }}' \
+			--global-arg 'claudeCodeUseBedrock=$${{ vault.get(sandbox-creds, CLAUDE_CODE_USE_BEDROCK) }}' \
+			--global-arg 'awsRegion=$${{ vault.get(sandbox-creds, AWS_REGION) }}' \
+			--json > /dev/null)
 	@swamp model search --json 2>/dev/null | jq -e '.results[] | select(.name == "coder-workspace")' > /dev/null 2>&1 \
-		|| (echo "Creating coder-workspace model..." && swamp model create sandbox/coder-workspace coder-workspace --json > /dev/null)
+		|| (echo "Creating coder-workspace model..." \
+		&& swamp model create sandbox/coder-workspace coder-workspace \
+			--global-arg 'claudeProvider=$${{ vault.get(sandbox-creds, CLAUDE_PROVIDER) }}' \
+			--global-arg 'anthropicApiKey=$${{ vault.get(sandbox-creds, ANTHROPIC_API_KEY) }}' \
+			--global-arg 'awsBearerTokenBedrock=$${{ vault.get(sandbox-creds, AWS_BEARER_TOKEN_BEDROCK) }}' \
+			--global-arg 'claudeCodeUseBedrock=$${{ vault.get(sandbox-creds, CLAUDE_CODE_USE_BEDROCK) }}' \
+			--global-arg 'awsRegion=$${{ vault.get(sandbox-creds, AWS_REGION) }}' \
+			--json > /dev/null)
 	@swamp model search --json 2>/dev/null | jq -e '.results[] | select(.name == "coder-task")' > /dev/null 2>&1 \
 		|| (echo "Creating coder-task model..." && swamp model create sandbox/coder-task coder-task --json > /dev/null)
 
@@ -108,55 +162,15 @@ login: $(CODER) ## Authenticate the Coder CLI (creates first user on initial run
 # --- Template + workspace (via swamp models) ---
 
 setup: models $(CODER) ## Push template and create workspace (run after login)
-	@BEDROCK_TOKEN="$${AWS_BEARER_TOKEN_BEDROCK:-}"; \
-	BEDROCK_MODE="$${CLAUDE_CODE_USE_BEDROCK:-}"; \
-	API_KEY="$${ANTHROPIC_API_KEY:-}"; \
-	AWS_REGION="$${AWS_REGION:-}"; \
-	if [ -z "$$BEDROCK_TOKEN" ] || [ -z "$$BEDROCK_MODE" ] || [ -z "$$API_KEY" ]; then \
-		SETTINGS="$${HOME}/.claude/settings.json"; \
-		if [ -f "$$SETTINGS" ]; then \
-			[ -z "$$BEDROCK_TOKEN" ] && BEDROCK_TOKEN=$$(jq -r '.env.AWS_BEARER_TOKEN_BEDROCK // empty' "$$SETTINGS"); \
-			[ -z "$$BEDROCK_MODE" ] && BEDROCK_MODE=$$(jq -r '.env.CLAUDE_CODE_USE_BEDROCK // empty' "$$SETTINGS"); \
-			[ -z "$$API_KEY" ] && API_KEY=$$(jq -r '.env.ANTHROPIC_API_KEY // empty' "$$SETTINGS"); \
-			[ -z "$$AWS_REGION" ] && AWS_REGION=$$(jq -r '.env.AWS_REGION // empty' "$$SETTINGS"); \
-		fi; \
-	fi; \
-	if [ -z "$$BEDROCK_MODE" ] || [ -z "$$BEDROCK_TOKEN" ]; then \
-		if [ -z "$$API_KEY" ]; then \
-			echo "No Claude Code credentials detected."; \
-			echo ""; \
-			echo "Set one of (in environment or ~/.claude/settings.json):"; \
-			echo "  ANTHROPIC_API_KEY              — for direct Anthropic API access"; \
-			echo "  CLAUDE_CODE_USE_BEDROCK +"; \
-			echo "  AWS_BEARER_TOKEN_BEDROCK       — for AWS Bedrock access"; \
-			echo ""; \
-			echo "Then re-run: make setup"; \
-			exit 1; \
-		fi; \
-	fi; \
-	PROVIDER="anthropic"; \
-	if [ -n "$$BEDROCK_MODE" ] && [ -n "$$BEDROCK_TOKEN" ]; then \
-		PROVIDER="bedrock"; \
-	fi; \
-	echo "=== Pushing template (provider: $$PROVIDER) ==="; \
-	swamp model method run coder-template push \
-		--input "variables.preset_claude_provider=$$PROVIDER" \
-		--input "variables.preset_anthropic_api_key=$${API_KEY:-}" \
-		--input "variables.preset_aws_bearer_token_bedrock=$${BEDROCK_TOKEN:-}" \
-		--input "variables.preset_claude_code_use_bedrock=$${BEDROCK_MODE:-}" \
-		--input "variables.preset_aws_region=$${AWS_REGION:-us-east-1}"; \
-	echo ""; \
-	echo "=== Creating workspace (provider: $$PROVIDER) ==="; \
-	swamp model method run coder-workspace create \
-		--input "provider=$$PROVIDER" \
-		--input "anthropicApiKey=$${API_KEY:-}" \
-		--input "awsBearerTokenBedrock=$${BEDROCK_TOKEN:-}" \
-		--input "claudeCodeUseBedrock=$${BEDROCK_MODE:-}" \
-		--input "awsRegion=$${AWS_REGION:-us-east-1}"; \
-	echo ""; \
-	echo "Workspace ready. Run tasks with:"; \
-	echo "  make task-inspect    # Run the sandbox inspection example"; \
-	echo "  make task PROMPT=\"your prompt here\"  # Run a custom task"
+	@echo "=== Pushing template (credentials from vault) ==="
+	@swamp model method run coder-template push
+	@echo ""
+	@echo "=== Creating workspace (credentials from vault) ==="
+	@swamp model method run coder-workspace create
+	@echo ""
+	@echo "Workspace ready. Run tasks with:"
+	@echo "  make task-inspect    # Run the sandbox inspection example"
+	@echo "  make task PROMPT=\"your prompt here\"  # Run a custom task"
 
 # --- Task dispatch (via swamp model) ---
 
