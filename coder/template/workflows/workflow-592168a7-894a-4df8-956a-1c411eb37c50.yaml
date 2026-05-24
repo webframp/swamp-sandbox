@@ -1,0 +1,70 @@
+id: 592168a7-894a-4df8-956a-1c411eb37c50
+name: sandbox-health
+tags:
+  example: "04-workflow-dag"
+jobs:
+  - name: observe-filesystem
+    description: Capture filesystem state (disk usage, file counts, writable paths)
+    steps:
+      - name: run
+        task:
+          type: model_method
+          modelIdOrName: sandbox-filesystem
+          methodName: execute
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: observe-network
+    description: Capture network state (interfaces, ports, DNS, connectivity)
+    steps:
+      - name: run
+        task:
+          type: model_method
+          modelIdOrName: sandbox-network
+          methodName: execute
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: observe-processes
+    description: Capture process state (counts, top CPU/memory consumers)
+    steps:
+      - name: run
+        task:
+          type: model_method
+          modelIdOrName: sandbox-processes
+          methodName: execute
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: synthesize
+    description: Read all observations and produce a health verdict
+    steps:
+      - name: assess
+        task:
+          type: model_method
+          modelIdOrName: sandbox-assess
+          methodName: execute
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn:
+      - job: observe-filesystem
+        condition:
+          type: succeeded
+      - job: observe-network
+        condition:
+          type: succeeded
+      - job: observe-processes
+        condition:
+          type: succeeded
+    weight: 0
+version: 1

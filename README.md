@@ -131,6 +131,11 @@ README explaining what it demonstrates and how to run it.
 | Example | Description |
 |---------|-------------|
 | [01-sandbox-inspect](examples/01-sandbox-inspect/) | Inspect the sandbox environment to verify isolation |
+| [02-typed-observation](examples/02-typed-observation/) | Observe system state as versioned, typed data |
+| [03-cel-queries](examples/03-cel-queries/) | Query model output with CEL expressions |
+| [04-workflow-dag](examples/04-workflow-dag/) | Parallel workflow replacing sequential pipelines |
+| [05-extension-model](examples/05-extension-model/) | Custom TypeScript model with Zod schema validation |
+| [06-architect-loop](examples/06-architect-loop/) | Full agentic lifecycle: observe → reason → act → verify |
 
 ## Exploring interactively
 

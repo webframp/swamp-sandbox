@@ -1,0 +1,19 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: b4749cca-c6eb-445b-b53a-7a2d6cc10d26
+name: sandbox-processes
+version: 1
+tags:
+  example: "04-workflow-dag"
+globalArguments: {}
+methods:
+  execute:
+    arguments:
+      run: |
+        echo "{"
+        echo "  \"observedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+        echo "  \"total\": $(ps aux 2>/dev/null | tail -n +2 | wc -l),"
+        echo "  \"byUser\": {$(ps aux 2>/dev/null | tail -n +2 | awk '{print $1}' | sort | uniq -c | sort -rn | head -5 | awk '{print "\"" $2 "\": " $1}' | tr '\n' ',' | sed 's/,$//')]}"
+        echo "  \"topCpu\": [$(ps aux --sort=-%cpu 2>/dev/null | tail -n +2 | head -5 | awk '{print "{\"pid\":" $2 ",\"cpu\":" $3 ",\"mem\":" $4 ",\"cmd\":\"" $11 "\"}"}' | tr '\n' ',' | sed 's/,$//')],"
+        echo "  \"topMem\": [$(ps aux --sort=-%mem 2>/dev/null | tail -n +2 | head -5 | awk '{print "{\"pid\":" $2 ",\"cpu\":" $3 ",\"mem\":" $4 ",\"cmd\":\"" $11 "\"}"}' | tr '\n' ',' | sed 's/,$//')]"
+        echo "}"

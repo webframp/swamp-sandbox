@@ -1,0 +1,33 @@
+type: command/shell
+typeVersion: 2026.02.09.1
+id: ab7a05fa-b2a0-4b93-ad83-a393a741d200
+name: sandbox-observe
+version: 1
+tags:
+  example: "02-typed-observation"
+globalArguments: {}
+methods:
+  execute:
+    arguments:
+      run: |
+        echo "{"
+        echo "  \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+        echo "  \"hostname\": \"$(hostname)\","
+        echo "  \"user\": \"$(whoami)\","
+        echo "  \"uptime_seconds\": $(cat /proc/uptime | cut -d' ' -f1 | cut -d. -f1),"
+        echo "  \"packages\": {"
+        echo "    \"total\": $(dpkg -l 2>/dev/null | grep '^ii' | wc -l),"
+        echo "    \"list\": [$(dpkg -l 2>/dev/null | grep '^ii' | awk '{print "\"" $2 "\""}' | head -20 | tr '\n' ',' | sed 's/,$//')]"
+        echo "  },"
+        echo "  \"processes\": {"
+        echo "    \"total\": $(ps aux 2>/dev/null | wc -l),"
+        echo "    \"list\": [$(ps -eo comm= 2>/dev/null | sort -u | head -15 | awk '{print "\"" $1 "\""}' | tr '\n' ',' | sed 's/,$//')]"
+        echo "  },"
+        echo "  \"filesystem\": {"
+        echo "    \"tmp_files\": $(find /tmp -maxdepth 1 -type f 2>/dev/null | wc -l),"
+        echo "    \"home_files\": $(find /home/coder -maxdepth 1 -type f 2>/dev/null | wc -l)"
+        echo "  },"
+        echo "  \"network\": {"
+        echo "    \"listening_ports\": [$(ss -tlnp 2>/dev/null | tail -n +2 | awk '{print $4}' | grep -oP ':\K[0-9]+' | sort -un | head -10 | awk '{print $1}' | tr '\n' ',' | sed 's/,$//')]"
+        echo "  }"
+        echo "}"
