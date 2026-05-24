@@ -1,0 +1,17 @@
+name: sandbox-coder-server
+type: sandbox/coder-server
+version: "2026.05.24.1"
+description: >
+  Manages the Coder server lifecycle via Docker Compose. Provides start, stop,
+  and status methods that produce typed, versioned state about the running
+  server — URL, version, health, container info.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - sandbox
+  - coder
+  - server
