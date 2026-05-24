@@ -1,0 +1,16 @@
+type: sandbox/coder-workspace
+typeVersion: 2026.05.24.1
+id: de36739a-dc2e-45b9-921a-0ff89a807732
+name: coder-workspace
+version: 1
+tags: {}
+globalArguments:
+  url: 'http://localhost:3000'
+  templateName: sandbox
+  workspaceName: my-sandbox
+  claudeProvider: '${{ vault.get(sandbox-creds, CLAUDE_PROVIDER) }}'
+  anthropicApiKey: '${{ vault.get(sandbox-creds, ANTHROPIC_API_KEY) }}'
+  awsBearerTokenBedrock: '${{ vault.get(sandbox-creds, AWS_BEARER_TOKEN_BEDROCK) }}'
+  claudeCodeUseBedrock: '${{ vault.get(sandbox-creds, CLAUDE_CODE_USE_BEDROCK) }}'
+  awsRegion: '${{ vault.get(sandbox-creds, AWS_REGION) }}'
+methods: {}

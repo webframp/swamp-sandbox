@@ -1,0 +1,16 @@
+type: sandbox/coder-template
+typeVersion: 2026.05.24.1
+id: ec4f6de6-e05b-44c5-a4dc-22697f6be0ed
+name: coder-template
+version: 1
+tags: {}
+globalArguments:
+  url: 'http://localhost:3000'
+  templateName: sandbox
+  templateDir: ./coder/template
+  claudeProvider: '${{ vault.get(sandbox-creds, CLAUDE_PROVIDER) }}'
+  anthropicApiKey: '${{ vault.get(sandbox-creds, ANTHROPIC_API_KEY) }}'
+  awsBearerTokenBedrock: '${{ vault.get(sandbox-creds, AWS_BEARER_TOKEN_BEDROCK) }}'
+  claudeCodeUseBedrock: '${{ vault.get(sandbox-creds, CLAUDE_CODE_USE_BEDROCK) }}'
+  awsRegion: '${{ vault.get(sandbox-creds, AWS_REGION) }}'
+methods: {}
