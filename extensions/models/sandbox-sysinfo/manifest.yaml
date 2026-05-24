@@ -1,0 +1,17 @@
+name: sandbox-sysinfo
+type: sandbox/sysinfo
+version: "2026.05.24.1"
+description: >
+  Captures structured system information using Node.js APIs with full Zod
+  schema validation. Demonstrates that the same model/method/data contract
+  used for infrastructure automation works for any domain.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - sandbox
+  - sysinfo
+  - example
