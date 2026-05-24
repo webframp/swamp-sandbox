@@ -125,10 +125,13 @@ export const model = {
           awsRegion,
         } = context.globalArgs;
 
-        context.logger.info("Creating workspace {name} from template {template}", {
-          name: workspaceName,
-          template: templateName,
-        });
+        context.logger.info(
+          "Creating workspace {name} from template {template}",
+          {
+            name: workspaceName,
+            template: templateName,
+          },
+        );
 
         const coderBin = await findCoderBin();
         const cliArgs = [
@@ -195,7 +198,9 @@ export const model = {
         const { workspaceName } = context.globalArgs;
         const typedArgs = args as { orphan: boolean };
 
-        context.logger.info("Deleting workspace {name}", { name: workspaceName });
+        context.logger.info("Deleting workspace {name}", {
+          name: workspaceName,
+        });
 
         const coderBin = await findCoderBin();
         const cliArgs = ["delete", workspaceName, "--yes"];
@@ -270,7 +275,14 @@ export const model = {
 
 function mapWorkspaceStatus(
   buildStatus: string | undefined,
-): "running" | "stopped" | "starting" | "stopping" | "failed" | "deleted" | "not_found" {
+):
+  | "running"
+  | "stopped"
+  | "starting"
+  | "stopping"
+  | "failed"
+  | "deleted"
+  | "not_found" {
   switch (buildStatus) {
     case "running":
       return "running";

@@ -1,0 +1,178 @@
+name: Swamp Upgrade
+
+on:
+  schedule:
+    - cron: "0 8 * * 3" # Wednesday at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  upgrade:
+    name: Upgrade swamp and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+      CLAUDE_CODE_USE_BEDROCK: "1"
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: systeminit/setup-swamp@v0.1.0
+
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: "2.7.14"
+
+      - name: Record current version
+        id: before
+        run: |
+          echo "version=$(swamp --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Run swamp update
+        id: update
+        run: |
+          OUTPUT=$(swamp update --json 2>&1 || true)
+          echo "$OUTPUT"
+          NEW_VERSION=$(swamp --version)
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$NEW_VERSION" != "${{ steps.before.outputs.version }}" ]; then
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify extensions load after upgrade
+        run: |
+          swamp doctor extensions --json
+          TYPES=$(swamp model type search sandbox --json | jq '.results | length')
+          echo "Registered $TYPES sandbox model types"
+          if [ "$TYPES" -lt 4 ]; then
+            echo "::error::Extensions failed to load after upgrade"
+            echo "extensions_broken=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Store test credentials
+        if: env.extensions_broken != 'true'
+        run: make vault
+
+      - name: Create model instances
+        if: env.extensions_broken != 'true'
+        run: make models
+
+      - name: Validate models
+        if: env.extensions_broken != 'true'
+        run: swamp model validate --json
+
+      - name: Start Coder server
+        if: env.extensions_broken != 'true'
+        run: make up
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Authenticate
+        if: env.extensions_broken != 'true'
+        run: make login
+
+      - name: Push template
+        if: env.extensions_broken != 'true'
+        run: swamp model method run coder-template push
+
+      - name: Create workspace
+        if: env.extensions_broken != 'true'
+        run: swamp model method run coder-workspace create
+
+      - name: Verify workspace healthy
+        if: env.extensions_broken != 'true'
+        id: smoke
+        run: |
+          swamp data get coder-workspace current --json | jq -e '.content.status == "running"'
+          echo "Waiting for agent to connect..."
+          timeout 60 bash -c '
+            until .local/bin/coder list --output json 2>/dev/null \
+              | jq -e ".[0].latest_build.resources[0].agents[0].status == \"connected\"" >/dev/null 2>&1; do
+              sleep 2
+            done'
+          echo "Agent connected"
+          echo "passed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Teardown
+        if: always()
+        run: make destroy 2>/dev/null || true
+
+      - name: Create upgrade PR
+        if: steps.update.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="chore/swamp-upgrade-${{ steps.update.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+
+          # If smoke test passed, this is a clean upgrade
+          if [ "${{ steps.smoke.outputs.passed }}" = "true" ]; then
+            BODY="## Swamp Upgrade
+
+          Upgraded from \`${{ steps.before.outputs.version }}\` to \`${{ steps.update.outputs.version }}\`.
+
+          ### Smoke test results
+          - Extensions load: PASS
+          - Model validation: PASS
+          - Template push: PASS
+          - Workspace creation: PASS
+          - Agent connectivity: PASS
+
+          Safe to merge."
+          else
+            BODY="## Swamp Upgrade (needs fixes)
+
+          Upgraded from \`${{ steps.before.outputs.version }}\` to \`${{ steps.update.outputs.version }}\`.
+
+          ### Smoke test results
+          - Extensions load: ${{ env.extensions_broken == 'true' && 'FAIL' || 'PASS' }}
+          - Full smoke test: INCOMPLETE
+
+          This upgrade may require extension changes. Check the workflow logs for details."
+          fi
+
+          # Check if any files changed (swamp update may modify lock files, etc)
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No file changes from upgrade, skipping PR"
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "chore: upgrade swamp to ${{ steps.update.outputs.version }}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "chore: upgrade swamp to ${{ steps.update.outputs.version }}" \
+            --body "$BODY" \
+            --label "dependencies"
+
+      - name: Create issue on failure
+        if: failure() && steps.update.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Swamp upgrade to ${{ steps.update.outputs.version }} broke smoke test" \
+            --body "The scheduled swamp upgrade from \`${{ steps.before.outputs.version }}\` to \`${{ steps.update.outputs.version }}\` caused smoke test failures.
+
+          Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+          Likely causes:
+          - Breaking change in swamp extension API
+          - Schema validation changes
+          - New reserved words or naming constraints
+
+          Action needed: review extension models in \`extensions/models/\` for compatibility." \
+            --label "bug,dependencies"

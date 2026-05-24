@@ -176,7 +176,9 @@ export const model = {
         workspaceName: z
           .string()
           .optional()
-          .describe("Workspace name to get logs from (uses latest task if omitted)"),
+          .describe(
+            "Workspace name to get logs from (uses latest task if omitted)",
+          ),
       }),
       execute: async (args: Record<string, unknown>, context: any) => {
         const typedArgs = args as { workspaceName?: string };
@@ -195,7 +197,9 @@ export const model = {
           );
         }
 
-        context.logger.info("Fetching logs for workspace {workspace}", { workspace });
+        context.logger.info("Fetching logs for workspace {workspace}", {
+          workspace,
+        });
 
         const coderBin = await findCoderBin();
         const result = await runCommand(coderBin, [
@@ -208,7 +212,9 @@ export const model = {
         const state = {
           prompt: `[logs for ${workspace}]`,
           workspaceName: workspace,
-          status: result.success ? ("completed" as const) : ("unknown" as const),
+          status: result.success
+            ? ("completed" as const)
+            : ("unknown" as const),
           dispatchedAt: new Date().toISOString(),
         };
 

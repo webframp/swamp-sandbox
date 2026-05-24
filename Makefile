@@ -110,15 +110,10 @@ up: ## Start the Coder server
 		exit 1; \
 	fi
 	CONTAINER_SOCKET=$(CONTAINER_SOCKET) docker compose up -d
-	@echo "Waiting for Coder server..."
-	@for i in 1 2 3 4 5 6 7 8 9 10; do \
-		if curl -s -o /dev/null -w '' $(CODER_URL) 2>/dev/null; then \
-			echo "Coder is ready at $(CODER_URL)"; \
-			exit 0; \
-		fi; \
-		sleep 2; \
-	done; \
-	echo "Coder did not start in time. Check: docker compose logs"
+	@echo "Waiting for Coder server to be ready..."
+	@timeout 120 sh -c 'until curl -fsS http://localhost:3000/api/v2/buildinfo >/dev/null 2>&1; do sleep 2; done' \
+		|| { echo "=== Container status ==="; docker compose ps; echo "=== Container logs ==="; docker compose logs --tail 50; exit 1; }
+	@echo "Coder is ready at $(CODER_URL)"
 
 down: ## Stop the Coder server
 	docker compose down

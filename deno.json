@@ -1,0 +1,16 @@
+{
+  "tasks": {
+    "check": "deno check extensions/models/*/mod.ts",
+    "lint": "deno lint extensions/models/",
+    "fmt": "deno fmt extensions/models/",
+    "fmt:check": "deno fmt --check extensions/models/"
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any", "no-import-prefix"]
+    }
+  },
+  "compilerOptions": {
+    "strict": true
+  }
+}

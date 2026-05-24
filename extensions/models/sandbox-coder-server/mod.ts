@@ -96,7 +96,8 @@ export const model = {
   globalArguments: GlobalArgsSchema,
   resources: {
     state: {
-      description: "Current server state including health, version, and container info",
+      description:
+        "Current server state including health, version, and container info",
       schema: ServerStateSchema,
       lifetime: "infinite" as const,
       garbageCollection: 10,
@@ -104,7 +105,8 @@ export const model = {
   },
   methods: {
     start: {
-      description: "Start the Coder server via Docker Compose and wait for it to become healthy",
+      description:
+        "Start the Coder server via Docker Compose and wait for it to become healthy",
       arguments: z.object({
         containerSocket: z
           .string()
@@ -114,7 +116,9 @@ export const model = {
         const url = context.globalArgs.url;
         const socket = (args as { containerSocket: string }).containerSocket;
 
-        context.logger.info("Starting Coder server with socket {socket}", { socket });
+        context.logger.info("Starting Coder server with socket {socket}", {
+          socket,
+        });
 
         const startResult = await runCommand("docker", [
           "compose",

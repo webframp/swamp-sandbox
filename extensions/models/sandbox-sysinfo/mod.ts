@@ -55,7 +55,11 @@ export const model = {
 
         let swampVersion: string | undefined;
         try {
-          const cmd = new Deno.Command("swamp", { args: ["--version"], stdout: "piped", stderr: "piped" });
+          const cmd = new Deno.Command("swamp", {
+            args: ["--version"],
+            stdout: "piped",
+            stderr: "piped",
+          });
           const output = await cmd.output();
           if (output.success) {
             swampVersion = new TextDecoder().decode(output.stdout).trim();

@@ -3,5 +3,4 @@ name: sandbox-creds
 type: local_encryption
 config:
   auto_generate: true
-  base_dir: /home/sme/src/webframp/swamp-sandbox
 createdAt: '2026-05-24T18:57:31.735Z'

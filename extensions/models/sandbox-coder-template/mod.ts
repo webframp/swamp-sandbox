@@ -43,7 +43,7 @@ const VersionHistorySchema = z.object({
   checkedAt: z.string(),
 });
 
-async function getSessionToken(url: string): Promise<string | null> {
+async function getSessionToken(_url: string): Promise<string | null> {
   const configDir = Deno.env.get("CODER_CONFIG_DIR") ||
     `${Deno.env.get("HOME")}/.config/coderv2`;
   try {
@@ -135,11 +135,16 @@ export const model = {
           "--directory",
           templateDir,
           "--yes",
-          "--variable", `preset_claude_provider=${claudeProvider}`,
-          "--variable", `preset_anthropic_api_key=${anthropicApiKey}`,
-          "--variable", `preset_aws_bearer_token_bedrock=${awsBearerTokenBedrock}`,
-          "--variable", `preset_claude_code_use_bedrock=${claudeCodeUseBedrock}`,
-          "--variable", `preset_aws_region=${awsRegion}`,
+          "--variable",
+          `preset_claude_provider=${claudeProvider}`,
+          "--variable",
+          `preset_anthropic_api_key=${anthropicApiKey}`,
+          "--variable",
+          `preset_aws_bearer_token_bedrock=${awsBearerTokenBedrock}`,
+          "--variable",
+          `preset_claude_code_use_bedrock=${claudeCodeUseBedrock}`,
+          "--variable",
+          `preset_aws_region=${awsRegion}`,
         ];
 
         const coderBin = await findCoderBin();
