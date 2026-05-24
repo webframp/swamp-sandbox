@@ -119,7 +119,7 @@ export const model = {
           dispatchedAt: new Date().toISOString(),
         };
 
-        const handle = await context.writeResource("state", "latest", state);
+        const handle = await context.writeResource("state", "last", state);
         return { dataHandles: [handle] };
       },
     },
@@ -185,7 +185,7 @@ export const model = {
 
         // If no workspace specified, read the latest dispatched task
         if (!workspace) {
-          const lastTask = await context.readResource?.("latest");
+          const lastTask = await context.readResource?.("last");
           workspace = lastTask?.workspaceName;
         }
 
@@ -212,7 +212,7 @@ export const model = {
           dispatchedAt: new Date().toISOString(),
         };
 
-        const handle = await context.writeResource("state", "latest", state);
+        const handle = await context.writeResource("state", "last", state);
         return { dataHandles: [handle] };
       },
     },
