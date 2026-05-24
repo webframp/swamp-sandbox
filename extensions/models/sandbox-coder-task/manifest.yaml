@@ -1,0 +1,17 @@
+name: sandbox-coder-task
+type: sandbox/coder-task
+version: "2026.05.24.1"
+description: >
+  Dispatches and observes Coder tasks. Provides dispatch, list, and logs
+  methods that produce typed state about task execution — prompt, status,
+  workspace assignment, and output.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - sandbox
+  - coder
+  - task
