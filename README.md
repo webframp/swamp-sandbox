@@ -9,6 +9,11 @@ workspace containers via Docker Compose. You get a safe, disposable sandbox
 to experiment with swamp models, methods, data queries, and workflows without
 touching your host machine or any production systems.
 
+**Inception:** The sandbox infrastructure itself is managed by swamp. The same
+typed models, vault-secured credentials, and CEL-queryable state you learn inside
+the workspace are what provision and observe it from the outside. You learn swamp
+by using swamp.
+
 ## What you'll learn
 
 - **Models and methods** — swamp's core primitive: typed schemas with executable
@@ -25,6 +30,7 @@ inside the sandbox.
 
 ## Prerequisites
 
+- [swamp](https://swamp.club) — installed and available on PATH
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose (or Podman)
 - Make, curl, jq
 - Claude Code credentials (one of the following):
@@ -38,34 +44,35 @@ Works on Linux (x86_64 and ARM), macOS (Apple Silicon and Intel), and WSL2.
 
 ## Quickstart
 
-Three commands to go from clone to running sandbox:
+One command to go from clone to running sandbox:
 
 ```bash
-make up                # Start the Coder server
-make login             # Create admin user and authenticate CLI (fully automatic)
-make setup             # Push template and create workspace
+make bootstrap         # Start server, authenticate, store credentials, push template, create workspace
 ```
 
-`make login` creates a default admin account, installs a repo-local Coder CLI
-matching the server version, and authenticates — no browser interaction needed.
+This runs five steps automatically:
+1. Starts the Coder server via Docker Compose
+2. Creates an admin user and authenticates the CLI
+3. Detects your Claude Code credentials and stores them in a swamp vault
+4. Pushes the workspace template (builds the container image)
+5. Creates a workspace with credentials resolved from the vault
 
-`make setup` needs credentials so Claude Code can authenticate inside the
-workspace container. It looks for them in two places (in this order):
+### Credentials
+
+`make bootstrap` looks for credentials in two places (in order):
 
 1. **Shell environment** — checks for exported env vars
 2. **`~/.claude/settings.json`** — reads the `env` object if vars aren't in the shell
-
-The credentials it looks for (one set required):
 
 | Provider | Variables |
 |----------|-----------|
 | Anthropic API | `ANTHROPIC_API_KEY` |
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK` + `AWS_BEARER_TOKEN_BEDROCK` |
 
-These values are passed as Coder workspace parameters and injected as
-environment variables inside the container. They are **not** logged, committed,
-or sent anywhere other than the locally-running Coder server. The container
-is ephemeral — credentials exist only for the lifetime of the workspace.
+Credentials are stored in a local encrypted swamp vault (`sandbox-creds`) and
+referenced via `${{ vault.get() }}` expressions. They never appear in plaintext
+in model definitions, execution reports, or git history. The vault's encryption
+key lives in `.swamp/secrets/` (gitignored).
 
 Export your credentials before running, or ensure they're in your settings file:
 
@@ -78,12 +85,15 @@ export CLAUDE_CODE_USE_BEDROCK=1
 export AWS_BEARER_TOKEN_BEDROCK=...
 ```
 
+### Running tasks
+
 Once the workspace is running, dispatch work via Coder tasks:
 
 ```bash
 make task-inspect                          # Run the sandbox inspection example
 make task PROMPT="your instructions here"  # Run a custom task
 make tasks                                 # List running tasks
+make status                                # Observe all infrastructure via swamp models
 ```
 
 You can also SSH into the workspace directly:
@@ -92,7 +102,13 @@ You can also SSH into the workspace directly:
 make ssh
 ```
 
-To tear down:
+### Teardown
+
+```bash
+make destroy           # Delete workspace, stop server, remove all data
+```
+
+Or incrementally:
 
 ```bash
 make clean             # Delete the workspace
@@ -155,97 +171,96 @@ ask it to help you create models, run workflows, or explore swamp's capabilities
 The swamp skills are pre-installed, so Claude knows how to work with swamp out
 of the box.
 
+## Infrastructure as swamp models
+
+The sandbox infrastructure is managed by four extension models in
+`extensions/models/`:
+
+| Model | Type | Purpose |
+|-------|------|---------|
+| coder-server | `sandbox/coder-server` | Docker Compose lifecycle (start/stop/status) |
+| coder-template | `sandbox/coder-template` | Workspace template versioning |
+| coder-workspace | `sandbox/coder-workspace` | Workspace provisioning and observation |
+| coder-task | `sandbox/coder-task` | Task dispatch and log retrieval |
+
+Each model produces typed, versioned data queryable with CEL:
+
+```bash
+# Observe all infrastructure state
+make status
+
+# Query workspace state directly
+swamp data get coder-workspace current --json
+
+# CEL query across all sandbox models
+swamp data query 'modelType.startsWith("sandbox/") && isLatest == true' \
+  --select '{"model": modelName, "spec": specName}' --json
+```
+
+Credentials flow through the vault — model definitions contain only
+`${{ vault.get(sandbox-creds, KEY) }}` references, never plaintext values.
+
 ## Step-by-step guide
 
 If you prefer to run commands directly without Make, this section walks through
-each step.
+each step using swamp models.
 
 ### 1. Start the Coder server
 
-**Docker:**
-
 ```bash
-docker compose up -d
+make up                # Docker Compose (auto-detects Docker or Podman socket)
 ```
 
-**Podman:**
+Verify:
 
 ```bash
-chmod 666 /run/user/1000/podman/podman.sock
-CONTAINER_SOCKET=/run/user/1000/podman/podman.sock docker compose up -d
+swamp model method run coder-server status
 ```
 
-Wait a few seconds, then verify it's running:
+### 2. Authenticate
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
-# Should print: 200
+make login             # Creates admin user, authenticates CLI
 ```
 
-### 2. Create the first user and log in
-
-Create the admin account via the API:
+### 3. Store credentials in the vault
 
 ```bash
-curl -s -X POST http://localhost:3000/api/v2/users/first \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@swamp-sandbox.local","username":"admin","password":"SandboxDemo1","trial":false}'
+make vault             # Detects credentials, stores in sandbox-creds vault
 ```
 
-Get a session token and authenticate the CLI:
+### 4. Create model instances and deploy
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:3000/api/v2/users/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@swamp-sandbox.local","password":"SandboxDemo1"}' | jq -r '.session_token')
-
-coder login http://localhost:3000 --token "$TOKEN"
+make models            # Creates swamp model instances with vault expressions
+make setup             # Pushes template and creates workspace via models
 ```
 
-### 3. Push the template and create a workspace
+Or run model methods directly:
 
 ```bash
-coder templates push sandbox --directory ./coder/template --yes
+swamp model method run coder-template push
+swamp model method run coder-workspace create
 ```
 
-This builds the workspace image (Debian slim with swamp and Claude Code
-pre-installed) and registers the template. The first push takes a couple of
-minutes while Terraform downloads providers and Docker builds the image.
+### 5. Dispatch work
 
 ```bash
-# For Anthropic API:
-coder create my-sandbox --template sandbox \
-  --parameter claude_provider=anthropic \
-  --parameter anthropic_api_key=YOUR_API_KEY_HERE \
-  --yes
-
-# For AWS Bedrock:
-coder create my-sandbox --template sandbox \
-  --parameter claude_provider=bedrock \
-  --parameter aws_bearer_token_bedrock=YOUR_TOKEN \
-  --parameter claude_code_use_bedrock=1 \
-  --yes
+swamp model method run coder-task dispatch --input "prompt=Run swamp model method run sandbox-inspect execute"
 ```
 
-### 4. Dispatch work with Coder tasks
+Or SSH in:
 
 ```bash
-coder tasks create --template sandbox \
-  "Initialize swamp and run swamp model method run sandbox-inspect execute"
-```
-
-Or SSH into the workspace directly:
-
-```bash
-coder ssh my-sandbox
+make ssh
 ```
 
 ### Cleanup
 
 ```bash
-coder delete my-sandbox --yes   # Delete the workspace
-docker compose down              # Stop the Coder server
-docker compose down -v           # Full reset (removes all data)
+swamp model method run coder-workspace delete   # Delete workspace via model
+make down                                        # Stop Docker Compose
+make reset                                       # Remove all data
 ```
 
 ## How it works
@@ -255,9 +270,10 @@ provision workspace containers. Each workspace is built from a Debian slim-based
 image with Claude Code and swamp pre-installed. The image is multi-arch
 (x86_64 and ARM).
 
-Users provide their Anthropic API key as a workspace parameter. Coder tasks
-dispatch Claude Code inside the container, which runs swamp models in isolation
-from the host.
+Swamp models manage the full lifecycle: template push, workspace creation,
+task dispatch, and status observation. Credentials are stored in a local
+encrypted vault and resolved at runtime via CEL expressions — they never
+appear in model definitions, execution logs, or reports.
 
 No Kubernetes or cloud accounts required.
 
