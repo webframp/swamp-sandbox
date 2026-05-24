@@ -1,0 +1,17 @@
+name: sandbox-coder-workspace
+type: sandbox/coder-workspace
+version: "2026.05.24.1"
+description: >
+  Manages Coder workspace lifecycle. Provides create, delete, and status
+  methods that interact with the Coder API to provision and observe sandbox
+  workspaces with typed, versioned state.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - sandbox
+  - coder
+  - workspace
