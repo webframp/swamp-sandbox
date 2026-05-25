@@ -20,7 +20,8 @@ concurrent agents with shared state replace sequential handoffs.
 
 ## Running the example
 
-From the sandbox workspace:
+These commands run **inside the Coder workspace container**, not on your host.
+Either SSH in first (`make ssh`) or dispatch as a task (`make task PROMPT="..."`).
 
 ```bash
 # Validate the workflow definition

@@ -17,6 +17,9 @@ This is the pattern from
 
 ## Running the example
 
+These commands run **inside the Coder workspace container**, not on your host.
+SSH in first with `make ssh`.
+
 Prerequisites: run example 02 at least twice to have multiple versions.
 
 ```bash

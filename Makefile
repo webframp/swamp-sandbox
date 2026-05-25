@@ -160,9 +160,14 @@ setup: models $(CODER) ## Push template and create workspace (run after login)
 	@echo "=== Pushing template (credentials from vault) ==="
 	@swamp model method run coder-template push
 	@echo ""
-	@if $(CODER) list --output json 2>/dev/null | jq -e '.[].name == "$(WORKSPACE_NAME)"' >/dev/null 2>&1; then \
-		echo "=== Workspace '$(WORKSPACE_NAME)' already exists, updating template ==="; \
+	@WS_STATUS=$$($(CODER) list --output json 2>/dev/null | jq -r '.[] | select(.name == "$(WORKSPACE_NAME)") | .latest_build.status'); \
+	if [ "$$WS_STATUS" = "running" ] || [ "$$WS_STATUS" = "starting" ]; then \
+		echo "=== Workspace '$(WORKSPACE_NAME)' already running, updating template ==="; \
 		$(CODER) update $(WORKSPACE_NAME) --template $(TEMPLATE_NAME) --yes 2>/dev/null || true; \
+	elif [ -n "$$WS_STATUS" ]; then \
+		echo "=== Workspace '$(WORKSPACE_NAME)' exists but is $$WS_STATUS, rebuilding ==="; \
+		$(CODER) delete $(WORKSPACE_NAME) --orphan --yes 2>/dev/null || true; \
+		swamp model method run coder-workspace create; \
 	else \
 		echo "=== Creating workspace (credentials from vault) ==="; \
 		swamp model method run coder-workspace create; \

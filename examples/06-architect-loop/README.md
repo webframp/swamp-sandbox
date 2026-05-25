@@ -27,18 +27,16 @@ This is the difference between "agents that write declarations faster" and
 
 ## Running the example
 
-From the sandbox workspace, dispatch a task with the architect-loop prompt:
-
-```bash
-make task PROMPT="$(cat examples/06-architect-loop/prompt.md)"
-```
-
-Or SSH in and run Claude Code directly:
+This runs **inside the Coder workspace container** where Claude Code is
+pre-configured with credentials from the vault. Do not run this with your
+local Claude Code installation — SSH into the workspace first.
 
 ```bash
 make ssh
-claude "$(cat examples/06-architect-loop/prompt.md)"
+cat examples/06-architect-loop/prompt.md | claude -p --dangerously-skip-permissions
 ```
+
+Or dispatch as a Coder task from your host (see "Via Coder task" below).
 
 Watch the agent work through each phase. It will:
 - Inspect available model types and existing data

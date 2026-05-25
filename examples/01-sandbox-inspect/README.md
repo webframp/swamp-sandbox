@@ -18,15 +18,16 @@ container, not on your host machine.
 
 ## Running the example
 
-Make sure you have a Coder workspace running (see the root README for setup).
+Make sure you have a Coder workspace running (`make bootstrap`).
 
-From your host machine, dispatch a Coder task that runs the inspection:
+From your host machine, dispatch a Coder task that runs inside the container:
 
 ```bash
 make task-inspect
 ```
 
-Or SSH into the workspace and run it directly:
+Or SSH into the workspace and run it directly (the model runs **inside the
+container**, not on your host):
 
 ```bash
 make ssh

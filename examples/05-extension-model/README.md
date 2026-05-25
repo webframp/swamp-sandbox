@@ -26,7 +26,8 @@ extensions/models/sandbox-sysinfo/
 
 ## Running the example
 
-From the sandbox workspace:
+These commands run **inside the Coder workspace container**, not on your host.
+Either SSH in first (`make ssh`) or dispatch as a task (`make task PROMPT="..."`).
 
 ```bash
 # The extension type is available because it lives in extensions/models/
