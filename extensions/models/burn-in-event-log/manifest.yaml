@@ -1,0 +1,17 @@
+name: burn-in-event-log
+type: burn-in/event-log
+version: "2026.05.30.1"
+description: >
+  Records webhook payloads received from Coder notifications. Each invocation
+  stores the raw event with metadata for latency and delivery analysis.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - burn-in
+  - webhook
+  - event
+  - coder

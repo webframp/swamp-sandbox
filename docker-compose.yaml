@@ -14,12 +14,17 @@ services:
         condition: service_completed_successfully
     ports:
       - "3000:3000"
+      - "2112:2112"
     volumes:
       - ${CONTAINER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - coder-data:/home/coder/.config/coderv2
     environment:
       CODER_ACCESS_URL: "http://localhost:3000"
       CODER_HTTP_ADDRESS: "0.0.0.0:3000"
+      CODER_PROMETHEUS_ENABLE: "true"
+      CODER_PROMETHEUS_ADDRESS: "0.0.0.0:2112"
+      CODER_NOTIFICATIONS_METHOD: "${CODER_NOTIFICATIONS_METHOD:-}"
+      CODER_NOTIFICATIONS_WEBHOOK_ENDPOINT: "${CODER_NOTIFICATIONS_WEBHOOK_ENDPOINT:-}"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/v2/buildinfo"]
       interval: 5s

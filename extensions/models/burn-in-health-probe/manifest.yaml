@@ -1,0 +1,16 @@
+name: burn-in-health-probe
+type: burn-in/health-probe
+version: "2026.05.30.1"
+description: >
+  Polls Coder server health and build info endpoints. Writes typed state
+  including status, version, and response latency for burn-in analysis.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - burn-in
+  - health
+  - coder

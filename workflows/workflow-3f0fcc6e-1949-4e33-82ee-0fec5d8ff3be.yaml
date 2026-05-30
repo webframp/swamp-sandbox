@@ -1,0 +1,51 @@
+id: 3f0fcc6e-1949-4e33-82ee-0fec5d8ff3be
+name: burn-in-event-reactor
+description: >
+  Triggered by the swamp serve webhook route when Coder sends notification
+  events. Records the raw payload and runs a health check to capture system
+  state at the moment of the event.
+tags:
+  burn-in: "true"
+  scenario: webhook-reactor
+inputs:
+  type: object
+  properties:
+    payload:
+      type: string
+      description: Raw JSON webhook payload from Coder notifications
+  required:
+    - payload
+jobs:
+  - name: record-event
+    description: Store the incoming webhook payload as versioned data
+    steps:
+      - name: record
+        task:
+          type: model_method
+          modelIdOrName: burn-in-event-log
+          methodName: record
+          input:
+            payload: "${{ inputs.payload }}"
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: correlate-health
+    description: Probe server health at the moment of the event for correlation
+    steps:
+      - name: check
+        task:
+          type: model_method
+          modelIdOrName: burn-in-health-probe
+          methodName: check
+        dependsOn: []
+        weight: 0
+        allowFailure: true
+    dependsOn:
+      - job: record-event
+        condition:
+          type: succeeded
+    weight: 0
+version: 1
