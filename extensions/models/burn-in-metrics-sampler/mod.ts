@@ -134,7 +134,7 @@ export const model = {
           { count: metrics.size, ms: scrapeDurationMs, success: scrapeSuccess },
         );
 
-        const handle = await context.writeResource("sample", "latest", sample);
+        const handle = await context.writeResource("sample", "current", sample);
         return { dataHandles: [handle] };
       },
     },

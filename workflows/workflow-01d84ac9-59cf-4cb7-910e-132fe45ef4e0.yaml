@@ -46,7 +46,7 @@ jobs:
           type: model_method
           modelIdOrName: burn-in-workspace-watch
           methodName: observe
-          input:
+          inputs:
             workspace: sandbox
         dependsOn: []
         weight: 0

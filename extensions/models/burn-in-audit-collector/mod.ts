@@ -106,7 +106,7 @@ export const model = {
 
           context.logger.info("Collected {count} audit events", { count: events.length });
 
-          const handle = await context.writeResource("batch", "latest", batch);
+          const handle = await context.writeResource("batch", "current", batch);
           return { dataHandles: [handle] };
         } catch (err) {
           const batch = {
@@ -118,7 +118,7 @@ export const model = {
 
           context.logger.error("Audit collection failed: {err}", { err: String(err) });
 
-          const handle = await context.writeResource("batch", "latest", batch);
+          const handle = await context.writeResource("batch", "current", batch);
           return { dataHandles: [handle] };
         }
       },

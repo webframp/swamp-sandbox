@@ -18,7 +18,7 @@ jobs:
           type: model_method
           modelIdOrName: burn-in-audit-collector
           methodName: collect
-          input:
+          inputs:
             limit: 50
         dependsOn: []
         weight: 0
@@ -48,7 +48,7 @@ jobs:
           type: model_method
           modelIdOrName: burn-in-workspace-watch
           methodName: observe
-          input:
+          inputs:
             workspace: sandbox
         dependsOn: []
         weight: 0

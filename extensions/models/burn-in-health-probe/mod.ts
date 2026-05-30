@@ -96,7 +96,7 @@ export const model = {
           bMs: buildinfo.latencyMs,
         });
 
-        const handle = await context.writeResource("probe", "latest", probe);
+        const handle = await context.writeResource("probe", "current", probe);
         return { dataHandles: [handle] };
       },
     },

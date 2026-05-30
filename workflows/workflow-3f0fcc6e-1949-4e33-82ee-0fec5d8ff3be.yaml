@@ -24,7 +24,7 @@ jobs:
           type: model_method
           modelIdOrName: burn-in-event-log
           methodName: record
-          input:
+          inputs:
             payload: "${{ inputs.payload }}"
         dependsOn: []
         weight: 0
