@@ -1,0 +1,58 @@
+id: 099412c7-e726-4520-a2c6-3022099d06a5
+name: burn-in-drift-detector
+description: >
+  Runs every 15 minutes to collect audit events and compare infrastructure
+  state against previous observations. Detects unexpected changes in server
+  health, workspace status, or configuration over time.
+trigger:
+  schedule: "*/15 * * * *"
+tags:
+  burn-in: "true"
+  scenario: drift-detection
+jobs:
+  - name: collect-audit
+    description: Page through recent audit log entries
+    steps:
+      - name: collect
+        task:
+          type: model_method
+          modelIdOrName: burn-in-audit-collector
+          methodName: collect
+          inputs:
+            limit: 50
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: probe-health
+    description: Get current server health for comparison
+    steps:
+      - name: check
+        task:
+          type: model_method
+          modelIdOrName: burn-in-health-probe
+          methodName: check
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: observe-workspace
+    description: Get current workspace state for comparison
+    steps:
+      - name: observe
+        task:
+          type: model_method
+          modelIdOrName: burn-in-workspace-watch
+          methodName: observe
+          inputs:
+            workspace: sandbox
+        dependsOn: []
+        weight: 0
+        allowFailure: true
+    dependsOn: []
+    weight: 0
+version: 1

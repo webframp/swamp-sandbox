@@ -1,0 +1,18 @@
+name: burn-in-metrics-sampler
+type: burn-in/metrics-sampler
+version: "2026.05.30.1"
+description: >
+  Scrapes Prometheus metrics from Coder's :2112 endpoint. Extracts key metrics
+  (API latency, workspace counts, agent connections) and writes them as typed
+  versioned data for trend analysis during burn-in.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - burn-in
+  - metrics
+  - prometheus
+  - coder

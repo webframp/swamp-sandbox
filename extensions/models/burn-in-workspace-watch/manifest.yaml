@@ -1,0 +1,18 @@
+name: burn-in-workspace-watch
+type: burn-in/workspace-watch
+version: "2026.05.30.1"
+description: >
+  Connects to the Coder workspace watch SSE endpoint and captures state
+  transitions. Each observation records the workspace status, agent state,
+  and transition timing for burn-in stability analysis.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - burn-in
+  - workspace
+  - sse
+  - coder

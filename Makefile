@@ -9,11 +9,27 @@ CODER_PASSWORD ?= SandboxDemo1
 CODER_PREFIX := $(CURDIR)/.local
 CODER := $(CODER_PREFIX)/bin/coder
 
-# Auto-detect container socket: prefer Docker, fall back to Podman rootless
-CONTAINER_SOCKET ?= $(shell \
-	if [ -S /var/run/docker.sock ]; then echo /var/run/docker.sock; \
-	elif [ -S /run/user/$$(id -u)/podman/podman.sock ]; then echo /run/user/$$(id -u)/podman/podman.sock; \
-	else echo /var/run/docker.sock; fi)
+# Auto-detect container runtime and socket path
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  # macOS: check for podman machine first, then Docker Desktop
+  PODMAN_MACHINE_STATE := $(shell podman machine inspect --format '{{.State}}' 2>/dev/null)
+  ifeq ($(PODMAN_MACHINE_STATE),running)
+    CONTAINER_SOCKET ?= $(shell podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null)
+    COMPOSE_FILE ?= docker-compose.podman-machine.yaml
+  else
+    CONTAINER_SOCKET ?= /var/run/docker.sock
+    COMPOSE_FILE ?= docker-compose.yaml
+  endif
+else
+  # Linux: prefer Docker, fall back to rootless Podman, then rootful Podman
+  CONTAINER_SOCKET ?= $(shell \
+    if [ -S /var/run/docker.sock ]; then echo /var/run/docker.sock; \
+    elif [ -S /run/user/$$(id -u)/podman/podman.sock ]; then echo /run/user/$$(id -u)/podman/podman.sock; \
+    elif [ -S /run/podman/podman.sock ]; then echo /run/podman/podman.sock; \
+    else echo /var/run/docker.sock; fi)
+  COMPOSE_FILE ?= docker-compose.yaml
+endif
 
 .PHONY: help bootstrap destroy up down reset login setup ssh task task-inspect tasks clean status coder-cli vault models
 
@@ -109,18 +125,18 @@ up: ## Start the Coder server
 		echo "Set CONTAINER_SOCKET to your Docker or Podman socket path."; \
 		exit 1; \
 	fi
-	CONTAINER_SOCKET=$(CONTAINER_SOCKET) docker compose up -d
+	CONTAINER_SOCKET=$(CONTAINER_SOCKET) docker compose -f $(COMPOSE_FILE) up -d
 	@echo "Waiting for Coder server to be ready..."
 	@timeout 120 sh -c 'until curl -fsS http://localhost:3000/api/v2/buildinfo >/dev/null 2>&1; do sleep 2; done' \
 		|| { echo "=== Container status ==="; docker compose ps; echo "=== Container logs ==="; docker compose logs --tail 50; exit 1; }
 	@echo "Coder is ready at $(CODER_URL)"
 
 down: ## Stop the Coder server
-	docker compose down
+	docker compose -f $(COMPOSE_FILE) down
 
 reset: ## Stop and remove all data (full reset)
 	@docker ps -aq --filter "label=coder.owner" | xargs -r docker rm -f 2>/dev/null || true
-	docker compose down -v
+	docker compose -f $(COMPOSE_FILE) down -v
 	@docker rmi swamp-sandbox:latest 2>/dev/null || true
 
 # --- Auth ---

@@ -1,3 +1,5 @@
+# ABOUTME: Compose file for macOS podman machine where host socket paths don't resolve.
+# ABOUTME: Uses the VM-internal /var/run/docker.sock instead of the macOS host path.
 services:
   coder-init:
     image: ghcr.io/coder/coder:latest
@@ -5,7 +7,7 @@ services:
     entrypoint: ["sh", "-c", "chown -R 1000:1000 /home/coder/.config/coderv2 && chmod 666 /var/run/docker.sock"]
     volumes:
       - coder-data:/home/coder/.config/coderv2
-      - ${CONTAINER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
   coder:
     image: ghcr.io/coder/coder:latest
     restart: on-failure:5
@@ -16,7 +18,7 @@ services:
       - "3000:3000"
       - "2112:2112"
     volumes:
-      - ${CONTAINER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
       - coder-data:/home/coder/.config/coderv2
     environment:
       CODER_ACCESS_URL: "http://localhost:3000"
@@ -25,6 +27,8 @@ services:
       CODER_PROMETHEUS_ADDRESS: "0.0.0.0:2112"
       CODER_NOTIFICATIONS_METHOD: "${CODER_NOTIFICATIONS_METHOD:-}"
       CODER_NOTIFICATIONS_WEBHOOK_ENDPOINT: "${CODER_NOTIFICATIONS_WEBHOOK_ENDPOINT:-}"
+    security_opt:
+      - label=disable
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/v2/buildinfo"]
       interval: 5s

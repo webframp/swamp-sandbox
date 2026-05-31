@@ -1,0 +1,56 @@
+id: 01d84ac9-59cf-4cb7-910e-132fe45ef4e0
+name: burn-in-heartbeat
+description: >
+  Periodic health check that probes the Coder server and scrapes Prometheus
+  metrics every 5 minutes. Produces versioned health and metrics data for
+  reliability analysis over extended burn-in runs.
+trigger:
+  schedule: "*/5 * * * *"
+tags:
+  burn-in: "true"
+  scenario: heartbeat
+jobs:
+  - name: probe-health
+    description: Check Coder server reachability and record latency
+    steps:
+      - name: check
+        task:
+          type: model_method
+          modelIdOrName: burn-in-health-probe
+          methodName: check
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: scrape-metrics
+    description: Scrape Prometheus metrics from Coder
+    steps:
+      - name: scrape
+        task:
+          type: model_method
+          modelIdOrName: burn-in-metrics-sampler
+          methodName: scrape
+        dependsOn: []
+        weight: 0
+        allowFailure: false
+    dependsOn: []
+    weight: 0
+
+  - name: observe-workspace
+    description: Snapshot workspace state
+    steps:
+      - name: observe
+        task:
+          type: model_method
+          modelIdOrName: burn-in-workspace-watch
+          methodName: observe
+          inputs:
+            workspace: sandbox
+        dependsOn: []
+        weight: 0
+        allowFailure: true
+    dependsOn: []
+    weight: 0
+version: 1

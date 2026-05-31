@@ -1,0 +1,16 @@
+name: burn-in-audit-collector
+type: burn-in/audit-collector
+version: "2026.05.30.1"
+description: >
+  Pages through the Coder audit log API and writes events as versioned data.
+  Tracks the last seen audit entry to enable incremental collection across runs.
+entrypoint: mod.ts
+platforms:
+  - linux-x86_64
+  - linux-aarch64
+  - darwin-x86_64
+  - darwin-aarch64
+labels:
+  - burn-in
+  - audit
+  - coder
