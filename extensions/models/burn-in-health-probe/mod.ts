@@ -30,7 +30,10 @@ async function timedFetch(
     clearTimeout(timeout);
 
     if (res.ok) {
-      const body = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      const body = contentType.includes("application/json")
+        ? await res.json()
+        : await res.text();
       return { ok: true, latencyMs, body };
     }
     return { ok: false, latencyMs, error: `HTTP ${res.status}` };
